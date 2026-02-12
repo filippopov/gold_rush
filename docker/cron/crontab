@@ -1,0 +1,4 @@
+# Gold Rush - Cron Jobs
+# Add Symfony console commands here as the app grows
+# Example: fetch precious metal prices every 15 minutes
+# */15 * * * * cd /var/www/backend && php bin/console app:fetch-prices >> /var/log/cron.log 2>&1

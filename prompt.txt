@@ -1,0 +1,51 @@
+1. I want to create a project to check the prices of precious metals with some graphics. I want to use Docker with separate containers for the backend, frontend, and database (MySQL). For the backend, I will use PHP with Symfony. For the frontend, I will use React. I will also have one container for cron jobs.
+The app will be created step by step. First, we need a docker-compose file. All other Dockerfiles will be placed in separate folders.
+
+
+Create the root .env file with database credentials (MYSQL_ROOT_PASSWORD, MYSQL_DATABASE, MYSQL_USER, MYSQL_PASSWORD) and port mappings (BACKEND_PORT=8080, FRONTEND_PORT=3000, DB_PORT=3306).
+
+Create docker/backend/Dockerfile — based on php:8.3-fpm, installing PDO MySQL, intl, zip, opcache, and Composer. Working directory set to /var/www/backend. Copies backend/ source in.
+
+Create docker/frontend/Dockerfile — based on node:20-alpine, working directory /app, copies frontend/ source in, runs npm install + dev server on port 3000.
+
+Create docker/nginx/Dockerfile + docker/nginx/default.conf — Nginx config that reverse-proxies /api to the backend container (port 9000 via FastCGI) and everything else to frontend:3000.
+
+Create docker/cron/Dockerfile — based on php:8.3-cli, installs the same PHP extensions as backend, copies docker/cron/crontab, runs crond in foreground. Shares the same backend source volume so it can execute Symfony console commands.
+
+Create docker-compose.yml with these services:
+
+db — mysql:8.0, persisted volume db_data, env vars from .env, healthcheck.
+backend — builds from docker/backend/, volume-mounts ./backend for dev, depends on db.
+frontend — builds from docker/frontend/, volume-mounts ./frontend for dev, exposes port 3000.
+nginx — builds from docker/nginx/, exposes port 8080, depends on backend and frontend.
+cron — builds from docker/cron/, shares ./backend volume, depends on db.
+Named volume db_data for MySQL persistence.
+A shared Docker network gold_rush_net.
+Create placeholder directories backend/ (with a minimal composer.json or .gitkeep) and frontend/ (with a minimal package.json or .gitkeep) so Docker builds don't fail.
+
+Add a .dockerignore at the project root to exclude .git, node_modules, vendor, and IDE files.
+
+Verification
+
+Run docker-compose config to validate the compose file syntax.
+Run docker-compose build to confirm all images build without errors.
+Run docker-compose up -d and verify all 5 containers start (check with docker-compose ps).
+Confirm MySQL is reachable on localhost:3306, Nginx responds on localhost:8080.
+Decisions
+
+Nginx added as a 6th service rather than exposing PHP-FPM directly — Symfony needs a web server in front of FPM; Nginx also acts as the single entry point to route /api vs frontend traffic.
+Cron container reuses the backend source via a shared volume so Symfony console commands (e.g., price fetching) work without code duplication.
+Dev-mode volume mounts for backend/ and frontend/ so file changes reflect immediately without rebuilding.
+Ready for your review — let me know if you'd like any changes (e.g., drop Nginx, different folder structure, add phpMyAdmin container, etc.) before implementation.
+
+
+2. give me coomit message which to use for this commit
+
+feat: initialize Docker multi-container setup
+
+- Add docker-compose.yml with 5 services (db, backend, frontend, nginx, cron)
+- Add Dockerfiles for PHP 8.3 backend, Node 20 frontend, Nginx, and cron
+- Add Nginx reverse proxy config (/ → React, /api → Symfony)
+- Add placeholder backend (composer.json) and frontend (React app)
+- Add .env with DB credentials and port mappings
+- Add .dockerignore

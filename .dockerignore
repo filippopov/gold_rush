@@ -1,0 +1,20 @@
+.git
+.github
+.env
+.dockerignore
+docker-compose.yml
+prompt.txt
+README.md
+
+# Dependencies (will be installed inside containers)
+backend/vendor
+frontend/node_modules
+
+# IDE / OS files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
