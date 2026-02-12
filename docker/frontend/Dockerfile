@@ -12,7 +12,7 @@ RUN npm install
 # Copy application source
 COPY frontend/ .
 
-EXPOSE 3000
+EXPOSE 5173
 
-# Start React dev server
-CMD ["npm", "start"]
+# Start Vite dev server
+CMD ["npm", "run", "dev"]
