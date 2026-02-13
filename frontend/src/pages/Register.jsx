@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 
-function Register() {
+function Register({ onAuthSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,7 +16,11 @@ function Register() {
 
     try {
       const response = await api.post('/register', { email, password });
-      localStorage.setItem('token', response.data.token);
+      if (!response.data?.token) {
+        throw new Error('Missing token in register response');
+      }
+
+      onAuthSuccess(response.data.token);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');

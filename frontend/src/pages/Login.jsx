@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 
-function Login() {
+function Login({ onAuthSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,7 +16,11 @@ function Login() {
 
     try {
       const response = await api.post('/login', { email, password });
-      localStorage.setItem('token', response.data.token);
+      if (!response.data?.token) {
+        throw new Error('Missing token in login response');
+      }
+
+      onAuthSuccess(response.data.token);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
