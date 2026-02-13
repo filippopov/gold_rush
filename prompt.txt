@@ -90,3 +90,53 @@ Verified working:
 Login endpoint had intermittent connection issues during testing (likely nginx restart timing), but the auth flow is fully implemented. The React app can register users, store tokens, and fetch protected data from the API.
 
 Next steps would be adding the precious metals price tracking entities, API endpoints for price data, and charts on the frontend dashboard.
+
+4. Look for a free API that provides price data for gold, silver, and other precious metals.
+
+Best Free Options
+
+Alpha Vantage: best starter choice; free API key, has GOLD_SILVER_SPOT + GOLD_SILVER_HISTORY, and also other commodity endpoints (copper, oil, etc.).
+MetalpriceAPI: free tier available (no card), supports many metals (XAU, XAG, XPT, XPD, etc.), but it explicitly notes delayed market data.
+GoldAPI: very clean metals-focused API with XAU/XAG/XPT/XPD; free sandbox exists, but limit is small (about 100 requests/month).
+Probably Not Ideal for Free MVP
+
+Twelve Data: strong API overall, but pricing page suggests commodities are on paid tiers (Grow+), so free plan is weak for metals.
+Metals-API: solid product, but current pricing visibility looks mostly paid plans; free availability seems limited/unclear.
+My Recommendation
+
+Start with Alpha Vantage now (fastest path for MVP + reasonable free usage).
+Keep MetalpriceAPI as fallback if you need more metal symbols quickly.
+Use GoldAPI only if your traffic is very low or just for testing.
+If you want, I can wire Alpha Vantage into your backend next (single endpoint + cache + frontend card).
+
+5. use Alpha Vantage make symfony command where i can take the curent prices for gold silver and other precius metals
+
+What changed
+
+Added new Symfony command: FetchPreciousMetalsPricesCommand.php
+Added env placeholder: .env
+Command details
+
+Name: app:metals:current-prices
+Defaults: XAU,XAG,XPT,XPD and USD
+Options:
+--symbols=XAU,XAG,...
+--currency=USD
+--api-key=...
+API key priority:
+--api-key
+ALPHA_VANTAGE_API_KEY
+Handles:
+missing API key
+invalid currency
+network/non-200/malformed JSON
+Alpha Vantage Note / Information / Error Message
+per-symbol warnings; continues processing
+Exit code:
+success if at least one symbol fetched
+failure if all fail
+Validation
+
+Confirmed registered in container:
+docker exec gold_rush_backend php bin/console list app:metals
+shows app:metals:current-prices
