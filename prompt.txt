@@ -140,3 +140,68 @@ Validation
 Confirmed registered in container:
 docker exec gold_rush_backend php bin/console list app:metals
 shows app:metals:current-prices
+
+
+6. I want the data from the command to be saved in a table. Create an entity and a migration, and show me the table columns before starting.
+
+DRAFT — Table columns (before implementation)
+Based on your choices (Balanced schema, unique by symbol+provider timestamp, skip invalid XPT/XPD rows), I propose this table:
+
+id — BIGINT, primary key, auto increment
+provider — VARCHAR(32), not null (example: ALPHA_VANTAGE)
+provider_function — VARCHAR(64), not null (example: GOLD_SILVER_SPOT)
+symbol — VARCHAR(10), not null (XAU, XAG)
+metal_name — VARCHAR(32), nullable (Gold, Silver)
+quote_currency — CHAR(3), not null, default USD
+price — DECIMAL(20,8), not null
+nominal_raw — VARCHAR(64), not null (keeps provider nominal string)
+provider_timestamp_raw — VARCHAR(64), not null (original provider timestamp text)
+provider_timestamp_utc — DATETIME(6), not null (normalized for querying)
+fetched_at_utc — DATETIME(6), not null (ingestion time)
+Indexes/constraints:
+
+UNIQUE(provider, symbol, quote_currency, provider_timestamp_utc)
+INDEX(symbol, provider_timestamp_utc)
+INDEX(fetched_at_utc)
+Naming:
+
+Entity: MetalPriceSnapshot
+Table: metal_price_snapshot
+Repository: MetalPriceSnapshotRepository
+Plan: Persist Metal Price Snapshots
+Create a Doctrine entity + migration that stores each valid metal price snapshot from the command, with deduplication on provider+symbol+currency+provider timestamp. Keep command behavior simple: skip invalid provider rows and persist only valid XAU/XAG snapshots. This aligns with Symfony/Doctrine conventions already used in User.php, migration style in Version20260212145829.php, and command flow in FetchPreciousMetalsPricesCommand.php.
+
+Steps
+
+Add entity + repository at backend/src/Entity/MetalPriceSnapshot.php and backend/src/Repository/MetalPriceSnapshotRepository.php with attribute mapping, typed properties, and indexes/unique constraint above.
+Generate migration in migrations to create table metal_price_snapshot with exact columns and constraints.
+Update FetchPreciousMetalsPricesCommand.php to persist each valid row via EntityManager and flush in batch.
+Keep invalid/unsupported rows as warnings only (no inserts), matching your selected policy.
+Ensure UTC normalization for provider timestamp before persistence; store raw timestamp text alongside normalized field.
+Verification
+
+Run: docker exec gold_rush_backend php bin/console doctrine:migrations:migrate
+Run: docker exec gold_rush_backend php bin/console app:metals:current-prices
+Check schema: docker exec gold_rush_backend php bin/console doctrine:schema:validate
+Spot-check rows in DB table metal_price_snapshot after command execution
+Reply approve and I’ll proceed with implementation exactly as above.
+
+
+Great — I’ll add API endpoints for latest prices and history from the new table, then validate them inside the backend container.
+
+What changed
+
+Added repository queries in MetalPriceSnapshotRepository.php:
+findLatestPerSymbol()
+findHistoryBySymbol(symbol, limit)
+Added new authenticated controller in MetalsController.php:
+GET /api/metals/latest
+GET /api/metals/history?symbol=XAU&limit=100 (limit capped at 500)
+Validation
+
+Routes are registered (api_metals_latest, api_metals_history).
+Doctrine schema is in sync.
+No IDE/compile errors in new files.
+If you want, I can now add frontend service methods and dashboard cards/charts to consume these two endpoints.
+
+If you want, I can now add frontend service methods and dashboard cards/charts to consume these two endpoints.

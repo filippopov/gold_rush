@@ -2,6 +2,9 @@
 
 namespace App\Command;
 
+use App\Entity\MetalPriceSnapshot;
+use App\Repository\MetalPriceSnapshotRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use JsonException;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -16,6 +19,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class FetchPreciousMetalsPricesCommand extends Command
 {
+    private const PROVIDER = 'ALPHA_VANTAGE';
+    private const PROVIDER_FUNCTION = 'GOLD_SILVER_SPOT';
     private const DEFAULT_SYMBOLS = ['XAU', 'XAG'];
     private const MAX_ATTEMPTS_PER_SYMBOL = 3;
 
@@ -25,6 +30,13 @@ class FetchPreciousMetalsPricesCommand extends Command
         'XPT' => 'Platinum',
         'XPD' => 'Palladium',
     ];
+
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+        private readonly MetalPriceSnapshotRepository $metalPriceSnapshotRepository,
+    ) {
+        parent::__construct();
+    }
 
     protected function configure(): void
     {
@@ -92,6 +104,7 @@ class FetchPreciousMetalsPricesCommand extends Command
         $rows = [];
         $successCount = 0;
         $failedCount = 0;
+        $persistedCount = 0;
 
         foreach ($symbols as $symbol) {
             if (!preg_match('/^[A-Z0-9]{2,10}$/', $symbol)) {
@@ -179,7 +192,51 @@ class FetchPreciousMetalsPricesCommand extends Command
             ];
             ++$successCount;
 
+            $providerTimestampUtc = $this->parseProviderTimestampUtc($timestampValue);
+            if ($providerTimestampUtc === null) {
+                ++$failedCount;
+                $io->warning(sprintf('%s: Could not parse provider timestamp "%s".', $symbol, $timestampValue));
+
+                sleep(1);
+
+                continue;
+            }
+
+            $alreadyExists = $this->metalPriceSnapshotRepository->findOneBy([
+                'provider' => self::PROVIDER,
+                'symbol' => $symbol,
+                'quoteCurrency' => 'USD',
+                'providerTimestampUtc' => $providerTimestampUtc,
+            ]);
+
+            if ($alreadyExists instanceof MetalPriceSnapshot) {
+                $io->note(sprintf('%s: Snapshot already stored for %s UTC, skipping insert.', $symbol, $providerTimestampUtc->format('Y-m-d H:i:s')));
+
+                sleep(1);
+
+                continue;
+            }
+
+            $snapshot = (new MetalPriceSnapshot())
+                ->setProvider(self::PROVIDER)
+                ->setProviderFunction(self::PROVIDER_FUNCTION)
+                ->setSymbol($symbol)
+                ->setMetalName(self::METAL_NAMES[$symbol] ?? $symbol)
+                ->setQuoteCurrency('USD')
+                ->setPrice($spotPriceValue)
+                ->setNominalRaw($nominalValue)
+                ->setProviderTimestampRaw($timestampValue)
+                ->setProviderTimestampUtc($providerTimestampUtc)
+                ->setFetchedAtUtc(new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
+
+            $this->entityManager->persist($snapshot);
+            ++$persistedCount;
+
             sleep(1);
+        }
+
+        if ($persistedCount > 0) {
+            $this->entityManager->flush();
         }
 
         if ($rows !== []) {
@@ -194,6 +251,12 @@ class FetchPreciousMetalsPricesCommand extends Command
                 $io->warning(sprintf('Completed with partial success: %d succeeded, %d failed.', $successCount, $failedCount));
             } else {
                 $io->success(sprintf('Completed successfully: %d symbol(s) fetched.', $successCount));
+            }
+
+            if ($persistedCount > 0) {
+                $io->success(sprintf('Saved %d new snapshot(s) to the database.', $persistedCount));
+            } else {
+                $io->note('No new snapshots were inserted (duplicates or no valid rows).');
             }
 
             return Command::SUCCESS;
@@ -253,5 +316,24 @@ class FetchPreciousMetalsPricesCommand extends Command
         }
 
         return 0;
+    }
+
+    private function parseProviderTimestampUtc(string $timestamp): ?\DateTimeImmutable
+    {
+        $dateTime = \DateTimeImmutable::createFromFormat(
+            'Y-m-d H:i:s',
+            $timestamp,
+            new \DateTimeZone('UTC'),
+        );
+
+        if ($dateTime instanceof \DateTimeImmutable) {
+            return $dateTime;
+        }
+
+        try {
+            return new \DateTimeImmutable($timestamp, new \DateTimeZone('UTC'));
+        } catch (\Exception) {
+            return null;
+        }
     }
 }
