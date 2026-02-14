@@ -9,7 +9,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class MetalsController extends AbstractController
 {
@@ -19,7 +18,6 @@ class MetalsController extends AbstractController
     }
 
     #[Route('/api/metals/latest', name: 'api_metals_latest', methods: ['GET'])]
-    #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function latest(): JsonResponse
     {
         $snapshots = $this->metalPriceSnapshotRepository->findLatestPerSymbol();
@@ -34,7 +32,6 @@ class MetalsController extends AbstractController
     }
 
     #[Route('/api/metals/history', name: 'api_metals_history', methods: ['GET'])]
-    #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function history(Request $request): JsonResponse
     {
         $symbol = strtoupper(trim((string) $request->query->get('symbol', '')));
