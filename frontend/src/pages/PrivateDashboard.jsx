@@ -29,20 +29,21 @@ function PrivateDashboard({ onLogout }) {
   };
 
   if (loading) {
-    return <div style={styles.container}>Loading...</div>;
+    return <section className="page-shell"><p className="muted">Loading...</p></section>;
   }
 
   if (error) {
-    return <div style={styles.container}><p style={styles.error}>{error}</p></div>;
+    return <section className="page-shell"><p className="error-text">{error}</p></section>;
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>🥇 Gold Rush Dashboard</h1>
+    <section className="page-shell auth-shell" style={{ maxWidth: '760px' }}>
+      <div className="surface-card panel-lg">
+        <h1 className="page-title">Gold Rush Dashboard</h1>
+        <p className="page-subtitle">Private account overview and quick actions.</p>
 
         {user && (
-          <div style={styles.userInfo}>
+          <div className="surface-card panel" style={{ background: 'var(--surface-soft)' }}>
             <h2>Welcome!</h2>
             <p><strong>Email:</strong> {user.email}</p>
             <p><strong>User ID:</strong> {user.id}</p>
@@ -51,71 +52,13 @@ function PrivateDashboard({ onLogout }) {
           </div>
         )}
 
-        <div style={styles.actions}>
-          <Link to="/" style={styles.homeButton}>Go to Public Home</Link>
-          <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
+        <div className="btn-row" style={{ marginTop: '1rem' }}>
+          <Link to="/" className="btn btn-secondary">Go to Public Home</Link>
+          <button onClick={handleLogout} className="btn btn-danger">Logout</button>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
-
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    backgroundColor: '#f5f5f5',
-    fontFamily: 'sans-serif',
-    padding: '1rem',
-  },
-  card: {
-    backgroundColor: 'white',
-    padding: '2rem',
-    borderRadius: '8px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-    width: '100%',
-    maxWidth: '520px',
-  },
-  title: {
-    textAlign: 'center',
-    marginBottom: '1.5rem',
-    color: '#333',
-  },
-  userInfo: {
-    backgroundColor: '#f8f9fa',
-    padding: '1rem',
-    borderRadius: '4px',
-    marginBottom: '1.5rem',
-  },
-  actions: {
-    display: 'flex',
-    gap: '0.75rem',
-  },
-  homeButton: {
-    flex: 1,
-    padding: '0.75rem',
-    fontSize: '0.95rem',
-    backgroundColor: '#f1f1f1',
-    color: '#333',
-    textDecoration: 'none',
-    textAlign: 'center',
-    borderRadius: '4px',
-  },
-  logoutButton: {
-    flex: 1,
-    padding: '0.75rem',
-    fontSize: '0.95rem',
-    backgroundColor: '#dc3545',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
-  error: {
-    color: 'red',
-  },
-};
 
 export default PrivateDashboard;

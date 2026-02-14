@@ -205,3 +205,29 @@ No IDE/compile errors in new files.
 If you want, I can now add frontend service methods and dashboard cards/charts to consume these two endpoints.
 
 If you want, I can now add frontend service methods and dashboard cards/charts to consume these two endpoints.
+
+7. I want this logic to be separate on the home page and to be available to visitors of the app, and the dashboard to be available for logged-in users.
+
+Perfect request. I’ll separate the metals tracker into a public Home page for visitors, keep Dashboard as login-only, and update backend access rules so home data can load without authentication.
+
+8. Make a more beautiful, responsive design for the pages, including a navigation bar and a footer
+
+I’ll research the current frontend structure and styling patterns first, then draft a detailed implementation plan for a responsive redesign with a navbar and footer without changing code yet. I’m starting by gathering the project instructions and relevant page/layout files.
+
+I’ve collected the key instruction files and identified the main page/component files. Next I’ll run a focused discovery pass to map existing layout/styling patterns and surface any constraints before drafting the redesign plan.
+
+
+Discovery is complete: the app currently uses inline styles and no shared layout system, so adding a clean navbar/footer and responsive polish will require coordinated changes across App, all pages, and MetalsTracker. I need a few design decisions to produce an exact execution plan.
+
+Plan: Responsive UI Refresh with Global Shell (DRAFT)
+This redesign will introduce one shared app shell (top navigation + footer) across all routes, move page styling to a single global stylesheet, and refactor page/components to use reusable layout classes instead of per-file inline style objects. The approach preserves current routing/auth behavior while making the interface more polished and mobile-friendly. Based on your decisions, the navbar/footer will appear on Home, Login, Register, and Dashboard; navigation will be auth-aware (logged-out: Login/Register, logged-in: Dashboard/Logout); and the visual tone will be balanced neutral with subtle accenting. This avoids dependency changes and keeps implementation focused on current React/Vite patterns.
+
+Steps
+
+Create shared layout components for navigation and footer in components, with auth-aware links and a global logout trigger wired from App.
+Add a single global stylesheet (imported from main.jsx) defining base reset, layout containers, spacing scale, card/form/button patterns, responsive breakpoints, and navbar/footer styles.
+Refactor route shell in App.jsx so BrowserRouter renders a persistent page frame (navbar + routed main content + footer), while preserving existing protected route logic and wildcard redirect.
+Update Home.jsx, Login.jsx, Register.jsx, and PrivateDashboard.jsx to replace inline styles with shared class-based layout and consistent responsive structure.
+Refactor MetalsTracker.jsx for responsiveness: wrap control row on small screens, make chart area fluid (remove fixed-width behavior), and keep card/grid readable across phone/tablet/desktop.
+Remove redundant/unused local style objects and ensure route-level CTA actions remain consistent with auth state (Home shows public actions, dashboard remains protected).
+Perform visual QA pass for mobile-first behavior (small viewport, tablet, desktop), including nav link states, spacing rhythm, and footer placement without overlap.

@@ -76,9 +76,9 @@ function MetalsTracker() {
     [metals, selectedSymbol]
   );
 
-  const renderSparkline = (history, width = 240, height = 64, stroke = '#c59d00') => {
+  const renderSparkline = (history, width = 240, height = 64, stroke = '#d6b45d') => {
     if (!history || history.length < 2) {
-      return <p style={styles.emptyHistory}>Not enough history for chart</p>;
+      return <p className="muted" style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem' }}>Not enough history for chart</p>;
     }
 
     const prices = history
@@ -86,7 +86,7 @@ function MetalsTracker() {
       .filter((value) => Number.isFinite(value));
 
     if (prices.length < 2) {
-      return <p style={styles.emptyHistory}>Not enough history for chart</p>;
+      return <p className="muted" style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem' }}>Not enough history for chart</p>;
     }
 
     const minPrice = Math.min(...prices);
@@ -102,42 +102,42 @@ function MetalsTracker() {
       .join(' ');
 
     return (
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={styles.sparkline}>
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="sparkline" preserveAspectRatio="none">
         <polyline fill="none" stroke={stroke} strokeWidth="2" points={points} />
       </svg>
     );
   };
 
   return (
-    <div style={styles.section}>
+    <div className="panel" style={{ marginTop: '0.75rem' }}>
       <h3>Precious Metals Tracker</h3>
-      <div style={styles.metalsHeaderRow}>
-        <p style={styles.autoRefreshText}>Auto-refresh: every 60 seconds</p>
-        <button onClick={fetchMetalsData} style={styles.refreshButton}>
+      <div className="tracker-head">
+        <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>Auto-refresh: every 60 seconds</p>
+        <button onClick={fetchMetalsData} className="btn btn-secondary">
           Refresh now
         </button>
       </div>
       {lastMetalsRefreshAt && (
-        <p style={styles.lastRefreshText}>
+        <p className="muted" style={{ marginTop: '0.5rem', marginBottom: '0.4rem', fontSize: '0.85rem' }}>
           Last refresh: {lastMetalsRefreshAt.toLocaleTimeString()}
         </p>
       )}
 
-      {metalsLoading && <p style={styles.mutedText}>Loading metals data...</p>}
-      {!metalsLoading && metalsError && <p style={styles.error}>{metalsError}</p>}
+      {metalsLoading && <p className="muted">Loading metals data...</p>}
+      {!metalsLoading && metalsError && <p className="error-text">{metalsError}</p>}
       {!metalsLoading && !metalsError && metals.length === 0 && (
-        <p style={styles.mutedText}>No metals snapshots saved yet.</p>
+        <p className="muted">No metals snapshots saved yet.</p>
       )}
 
       {!metalsLoading && !metalsError && metals.length > 0 && (
         <>
-          <div style={styles.selectorRow}>
-            <label htmlFor="symbol-selector" style={styles.selectorLabel}>History symbol:</label>
+          <div className="selector-row">
+            <label htmlFor="symbol-selector" className="label">History symbol:</label>
             <select
               id="symbol-selector"
               value={selectedSymbol}
               onChange={(event) => setSelectedSymbol(event.target.value)}
-              style={styles.selectorInput}
+              className="select"
             >
               {metals.map((metal) => (
                 <option key={metal.symbol} value={metal.symbol}>
@@ -146,12 +146,12 @@ function MetalsTracker() {
               ))}
             </select>
 
-            <label htmlFor="range-selector" style={styles.selectorLabel}>Points:</label>
+            <label htmlFor="range-selector" className="label">Points:</label>
             <select
               id="range-selector"
               value={selectedHistoryLimit}
               onChange={(event) => setSelectedHistoryLimit(Number(event.target.value))}
-              style={styles.selectorInput}
+              className="select"
             >
               {HISTORY_LIMIT_OPTIONS.map((limit) => (
                 <option key={limit} value={limit}>{limit}</option>
@@ -160,26 +160,26 @@ function MetalsTracker() {
           </div>
 
           {selectedMetal && (
-            <div style={styles.selectedHistoryCard}>
-              <h4 style={styles.selectedHistoryTitle}>
+            <div className="chart-box" style={{ marginTop: '0.8rem' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0' }}>
                 {selectedMetal.metalName} ({selectedMetal.symbol}) - {selectedHistoryLimit} point history
               </h4>
-              {renderSparkline(selectedMetal.history, 520, 120, '#a37d00')}
+              {renderSparkline(selectedMetal.history, 720, 140, '#c8a244')}
             </div>
           )}
 
-          <div style={styles.metalsGrid}>
+          <div className="grid grid-2">
             {metals.map((metal) => (
-              <div key={metal.symbol} style={styles.metalCard}>
-                <h4 style={styles.metalTitle}>{metal.metalName} ({metal.symbol})</h4>
-                <p style={styles.priceText}>
+              <div key={metal.symbol} className="surface-card panel">
+                <h4 style={{ margin: '0 0 0.45rem 0' }}>{metal.metalName} ({metal.symbol})</h4>
+                <p style={{ margin: '0 0 0.35rem 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent)' }}>
                   {Number.parseFloat(metal.price).toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 4,
                   })} {metal.quoteCurrency}
                 </p>
-                <p style={styles.metaText}>Nominal: {metal.nominalRaw}</p>
-                <p style={styles.metaText}>
+                <p className="muted" style={{ margin: '0 0 0.25rem 0', fontSize: '0.9rem' }}>Nominal: {metal.nominalRaw}</p>
+                <p className="muted" style={{ margin: '0 0 0.25rem 0', fontSize: '0.9rem' }}>
                   Last update: {new Date(metal.providerTimestampUtc).toLocaleString()}
                 </p>
                 {renderSparkline(metal.history)}
@@ -191,109 +191,5 @@ function MetalsTracker() {
     </div>
   );
 }
-
-const styles = {
-  section: {
-    marginBottom: '1.5rem',
-  },
-  metalsHeaderRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '0.75rem',
-    flexWrap: 'wrap',
-  },
-  autoRefreshText: {
-    margin: 0,
-    color: '#666',
-    fontSize: '0.9rem',
-  },
-  refreshButton: {
-    padding: '0.35rem 0.7rem',
-    fontSize: '0.85rem',
-    backgroundColor: '#f1f1f1',
-    border: '1px solid #d7d7d7',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
-  lastRefreshText: {
-    marginTop: '0.5rem',
-    marginBottom: '0.4rem',
-    color: '#777',
-    fontSize: '0.85rem',
-  },
-  selectorRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.6rem',
-    marginTop: '0.65rem',
-  },
-  selectorLabel: {
-    color: '#444',
-    fontSize: '0.9rem',
-  },
-  selectorInput: {
-    padding: '0.35rem 0.45rem',
-    borderRadius: '4px',
-    border: '1px solid #d4d4d4',
-    fontSize: '0.9rem',
-  },
-  selectedHistoryCard: {
-    marginTop: '0.75rem',
-    marginBottom: '0.85rem',
-    border: '1px solid #ececec',
-    borderRadius: '6px',
-    padding: '0.7rem',
-    backgroundColor: '#fffef8',
-  },
-  selectedHistoryTitle: {
-    margin: '0 0 0.5rem 0',
-    color: '#333',
-  },
-  mutedText: {
-    color: '#666',
-  },
-  metalsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-    gap: '1rem',
-    marginTop: '0.75rem',
-  },
-  metalCard: {
-    border: '1px solid #e8e8e8',
-    borderRadius: '6px',
-    padding: '0.85rem',
-    backgroundColor: '#fffdf6',
-  },
-  metalTitle: {
-    margin: '0 0 0.45rem 0',
-    color: '#333',
-  },
-  priceText: {
-    margin: '0 0 0.35rem 0',
-    fontSize: '1.1rem',
-    fontWeight: 700,
-    color: '#7a5f00',
-  },
-  metaText: {
-    margin: '0 0 0.25rem 0',
-    color: '#555',
-    fontSize: '0.9rem',
-  },
-  sparkline: {
-    marginTop: '0.4rem',
-    display: 'block',
-    backgroundColor: '#fff',
-    borderRadius: '4px',
-  },
-  emptyHistory: {
-    margin: '0.5rem 0 0 0',
-    color: '#777',
-    fontSize: '0.85rem',
-  },
-  error: {
-    color: 'red',
-  },
-};
 
 export default MetalsTracker;

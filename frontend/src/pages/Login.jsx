@@ -30,19 +30,19 @@ function Login({ onAuthSuccess }) {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>🥇 Gold Rush</h1>
-        <h2 style={styles.subtitle}>Login</h2>
+    <section className="page-shell auth-shell">
+      <div className="surface-card panel-lg">
+        <h1 className="page-title">Welcome back</h1>
+        <p className="page-subtitle">Sign in to access your dashboard.</p>
         
-        <form onSubmit={handleSubmit} style={styles.form}>
+        <form onSubmit={handleSubmit} className="form-stack">
           <input
             type="email"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            style={styles.input}
+            className="field"
           />
           
           <input
@@ -51,81 +51,22 @@ function Login({ onAuthSuccess }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            style={styles.input}
+            className="field"
           />
           
-          {error && <p style={styles.error}>{error}</p>}
+          {error && <p className="error-text">{error}</p>}
           
-          <button type="submit" disabled={loading} style={styles.button}>
+          <button type="submit" disabled={loading} className="btn btn-primary">
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
         
-        <p style={styles.link}>
+        <p className="muted">
           Don't have an account? <Link to="/register">Register</Link>
         </p>
       </div>
-    </div>
+    </section>
  );
 }
-
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    backgroundColor: '#f5f5f5',
-    fontFamily: 'sans-serif',
-  },
-  card: {
-    backgroundColor: 'white',
-    padding: '2rem',
-    borderRadius: '8px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-    width: '100%',
-    maxWidth: '400px',
-  },
-  title: {
-    textAlign: 'center',
-    marginBottom: '0.5rem',
-    color: '#333',
-  },
-  subtitle: {
-    textAlign: 'center',
-    marginBottom: '1.5rem',
-    color: '#666',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-  },
-  input: {
-    padding: '0.75rem',
-    fontSize: '1rem',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-  },
-  button: {
-    padding: '0.75rem',
-    fontSize: '1rem',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
-  error: {
-    color: 'red',
-    fontSize: '0.875rem',
-    margin: 0,
-  },
-  link: {
-    textAlign: 'center',
-    marginTop: '1rem',
-    color: '#666',
-  },
-};
 
 export default Login;
