@@ -334,3 +334,67 @@ Inputs: grams only (show ounces read-only)
 Save UX: auto-save on blur
 Display rounding: 8 decimals for amounts; 2 decimals for USD values
 Missing prices: show N/A for value, keep totals visible
+
+------
+10. Can you add a cron job to run the app:metals:current-prices command every hour?
+
+----
+11. I want functional tests for the backend. Can you add some?
+
+Plan: Backend Functional Tests (Symfony)
+Add a minimal PHPUnit/WebTestCase functional test suite for the current API (auth, holdings, metals) running inside Docker against a dedicated MySQL test database (gold_rush_test), with repeatable DB provisioning via the MySQL init script.
+
+Steps
+
+Add test dependencies in composer.json
+
+Add symfony/test-pack to require-dev (brings the standard Symfony testing stack, including the PHPUnit bridge + BrowserKit).
+Run composer install inside the backend container to install dev deps.
+Add PHPUnit config + test env files
+
+Create backend/phpunit.xml.dist configured to:
+Use APP_ENV=test
+Discover tests under tests/
+Use the Symfony PHPUnit Bridge runner (via bin/phpunit) if present
+Create backend/.env.test with a MySQL DATABASE_URL that uses the base DB name gold_rush (important) and relies on Doctrine’s existing when@test dbname_suffix in doctrine.yaml to produce gold_rush_test.
+This avoids the common pitfall where setting gold_rush_test in DATABASE_URL becomes gold_rush_test_test.
+Provision the MySQL test database via init script
+
+Update init.sql to:
+Create gold_rush_test if it doesn’t exist
+Grant the same privileges to gold_rush_user on gold_rush_test as on gold_rush
+Note: since MySQL init scripts only run on first container initialization, if your db_data volume already exists you’ll either:
+Drop/recreate the volume, or
+Manually run the equivalent SQL once.
+Create the functional test suite structure
+
+Add backend/tests/Functional/AuthTest.php
+POST /api/register returns 201 and includes token
+GET /api/me without token returns 401
+GET /api/me with token returns 200 and correct email
+Add backend/tests/Functional/HoldingsTest.php
+Register → token → PUT /api/holdings/XAU with {grams} succeeds
+GET /api/holdings returns the item and includes computed ounces
+Inconsistent {grams, ounces} returns 400 with an error key
+Add backend/tests/Functional/MetalsTest.php
+Seed one MetalPriceSnapshot via Doctrine (no external API calls)
+GET /api/metals/latest works without auth and returns the seeded symbol
+GET /api/metals/history?symbol=bad!! returns 400
+Ensure migrations run for the test DB
+
+Add a small “ensure test DB is migrated” helper used by these test classes (or a shared base test) that runs:
+doctrine:database:create (if needed) and doctrine:migrations:migrate --no-interaction
+Keep it minimal: migrations once per test class (or once per suite) + use unique emails per test to avoid cleanup complexity.
+Verification
+
+Rebuild DB container if needed (init.sql changes): docker compose up -d --build db
+Run migrations for test DB (inside backend container): APP_ENV=test php bin/console doctrine:migrations:migrate --no-interaction
+Run tests (inside backend container):
+If using Symfony PHPUnit Bridge: APP_ENV=test php bin/phpunit
+Otherwise: APP_ENV=test ./vendor/bin/phpunit
+Decisions
+
+Test DB: MySQL (same engine as runtime)
+Provisioning: Update init.sql
+Scope: Core auth + holdings + metals
+Execution: Run PHPUnit inside the backend container
