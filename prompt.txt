@@ -231,3 +231,106 @@ Update Home.jsx, Login.jsx, Register.jsx, and PrivateDashboard.jsx to replace in
 Refactor MetalsTracker.jsx for responsiveness: wrap control row on small screens, make chart area fluid (remove fixed-width behavior), and keep card/grid readable across phone/tablet/desktop.
 Remove redundant/unused local style objects and ensure route-level CTA actions remain consistent with auth state (Home shows public actions, dashboard remains protected).
 Perform visual QA pass for mobile-first behavior (small viewport, tablet, desktop), including nav link states, spacing rhythm, and footer placement without overlap.
+
+
+----------------------------------
+8. Create a table where the user can save information about how much gold and silver they have in grams and ounces.
+
+Plan: 
+
+Plan: User Metal Holdings Table
+Add a new per-user holdings table that stores “current holdings” in grams (as the source of truth), and returns both grams + troy ounces (computed) via a small authenticated API.
+
+Steps
+
+Create a new Doctrine entity UserMetalHolding in backend/src/Entity/UserMetalHolding.php
+Map to table user_metal_holding
+Fields: id (int), user (ManyToOne to User), symbol (string length 10), amountGrams (DECIMAL(20,8) stored as string), createdAt + updatedAt (DateTimeImmutable)
+Add unique constraint on (user, symbol) so each user has max one row per symbol
+Add a repository in backend/src/Repository/UserMetalHoldingRepository.php
+Query helpers like findByUser(User $user) and findOneByUserAndSymbol(User $user, string $symbol)
+Add a tiny unit conversion service in backend/src/Service/MetalUnitConverter.php
+Constant: troy ounce = 31.1034768 g
+Methods to convert grams ↔ troy ounces (use consistent rounding to 8 decimals)
+Add an authenticated controller in backend/src/Controller/HoldingsController.php
+GET /api/holdings: returns { count, items: [{ symbol, grams, ounces, updatedAt }] } for the current user
+PUT /api/holdings/{symbol}: upserts the user’s holding for that symbol
+Accept JSON with either grams or ounces (or both)
+If both provided and materially inconsistent, return 400 { error: "..." }
+Normalize symbol (trim + uppercase) and validate it (e.g. ^[A-Z0-9]{1,10}$)
+Add a migration in migrations
+Create user_metal_holding with user_id FK to user(id), unique index (user_id, symbol), and MySQL charset/collation matching existing migrations
+Note: the repo currently has duplicate “create user table” migrations; confirm your DB migration state before applying new ones
+Verification
+
+Run migrations: php bin/console doctrine:migrations:status then php bin/console doctrine:migrations:migrate
+Confirm routes: php bin/console debug:router | findstr holdings
+Manual API check (after login token):
+GET /api/holdings returns empty list initially
+PUT /api/holdings/XAU with { "grams": "100.00000000" } then GET shows ounces computed
+PUT /api/holdings/XAG with { "ounces": "10" } stores grams (converted) and returns both
+Decisions
+
+Store grams only; compute ounces in responses (avoids grams/ounces drift)
+Use troy ounces for conversion
+Allow any metal symbol string (not limited to XAU/XAG)
+Model as “current holdings” (upsert), not a transaction ledger
+
+----
+9. On the dashboard page, create a form where the user can enter how much gold and silver they have. Below the form, display the total amount and the value of their gold and silver using the latest price from the metal_price_snapshot table.
+
+Plan: Dashboard Holdings + Valuation
+Implement the dashboard UX to edit gold (XAU) and silver (XAG) holdings in grams, auto-save on blur, then show totals and USD valuation using the latest snapshots from /api/metals/latest. Also fix the Nginx FastCGI config so JWT Authorization reliably reaches Symfony for /api/holdings.
+
+Steps
+
+Patch Nginx to forward the JWT header
+
+Update default.conf inside the existing location ~ \.php$ block to add fastcgi_param HTTP_AUTHORIZATION $http_authorization; alongside the other fastcgi_param lines.
+Rationale: frontend sends Authorization: Bearer … (via api.js), but nginx may drop it unless explicitly forwarded to PHP-FPM.
+Add a small holdings API client for the frontend
+
+Create frontend/src/services/holdings.js using the existing axios instance from api.js.
+Implement:
+getHoldings() → GET /holdings
+upsertHolding(symbol, grams) → PUT /holdings/{symbol} with { grams }
+Keep payload handling aligned with HoldingsController.php (strings/decimals; symbol uppercasing on backend).
+Extend the logged-in dashboard page UI (grams-only, autosave on blur)
+
+Update PrivateDashboard.jsx:
+On load, fetch:
+holdings via getHoldings() (JWT-required)
+latest prices via existing metals.js (/metals/latest is public)
+Render a form with two field inputs (reusing existing CSS patterns from styles.css):
+Gold grams (symbol XAU)
+Silver grams (symbol XAG)
+Autosave behavior:
+On onBlur, if value changed, call upsertHolding('XAU', grams) / upsertHolding('XAG', grams)
+Update local state from the response (so the UI picks up canonical grams, computed ounces, and updatedAt)
+Treat blank input as 0 grams (so the backend always receives numeric content).
+Compute + display totals and valuation under the form
+
+Under the form, display:
+Per-metal amounts: grams (8 decimals) and computed troy ounces (8 decimals)
+Combined totals: total grams and total ounces
+Per-metal value in USD and combined value (2 decimals)
+Valuation logic:
+Map /api/metals/latest items by symbol (XAU, XAG) and use price as USD per troy oz (consistent with AlphaVantage spot usage in FetchPreciousMetalsPricesCommand.php).
+valueUsd = ounces * price
+Missing-price rule (your choice): if XAU/XAG price is missing, show value as N/A but still show totals.
+Verification
+
+Container config:
+Rebuild/restart nginx after the config change (docker compose up -d --build nginx or full stack rebuild if needed).
+API check (auth path):
+Log in via the frontend, then confirm /api/holdings requests succeed (no 401) and values persist across refresh.
+UI check:
+Enter grams for XAU/XAG, blur each field, confirm totals/value update and survive reload.
+Build check:
+Run a frontend build (e.g., inside the frontend container: npm run build).
+Decisions
+
+Inputs: grams only (show ounces read-only)
+Save UX: auto-save on blur
+Display rounding: 8 decimals for amounts; 2 decimals for USD values
+Missing prices: show N/A for value, keep totals visible
